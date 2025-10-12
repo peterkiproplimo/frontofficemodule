@@ -1,0 +1,208 @@
+// controllers/reportController.js
+import Complaint from "../models/Complaint.js";
+
+export const createReport = async (req, res) => {
+  try {
+    const {
+      subject,
+      description,
+      category,
+      priority,
+      reporterName,
+      reporterContact,
+      status
+    } = req.body;
+
+    // ===== Validate required fields =====
+    if (!subject || !description || !reporterName || !reporterContact) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // ===== Create new report =====
+    const newReport = await Complaint.create({
+      subject,
+      description,
+      category,
+      priority,
+      reporterName,
+      reporterContact,
+      status: 'Open', // Default status
+    });
+
+    res.status(201).json({
+      message: "Report created successfully",
+      report: newReport,
+    });
+  } catch (error) {
+    console.error("Error creating report:", error);
+    res.status(500).json({
+      message: "Error creating report",
+      error: error.message,
+    });
+  }
+
+};
+
+export const updateReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // Report/complaint ID
+    const { status } = req.body; // New status value
+
+    console.log("Updating status for report ID:", id, "to status:", status);
+    // ===== Validate input =====
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    // ===== Check if complaint exists =====
+    const report = await Complaint.findById(id);
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // ===== Update status =====
+    report.status = status;
+    await report.save();
+
+    res.status(200).json({
+      message: "Complaint status updated successfully",
+      report,
+    });
+  } catch (error) {
+    console.error("Error updating report status:", error);
+    res.status(500).json({
+      message: "Error updating report status",
+      error: error.message,
+    });
+  }
+};
+
+export const updateReportAssignment = async (req, res) => {
+  try {
+    const { id } = req.params; // Complaint/Report ID
+    const { assignedTo } = req.body; // New assigned user/staff ID
+
+    console.log("Assigning report ID:", id, "to user/staff ID:", assignedTo);
+
+    // ===== Validate input =====
+    if (!assignedTo) {
+      return res.status(400).json({ message: "AssignedTo (User/Staff ID) is required" });
+    }
+
+    // ===== Check if complaint exists =====
+    const report = await Complaint.findById(id);
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // ===== Update assigned user/staff =====
+    report.assignedTo = assignedTo;
+    await report.save();
+
+    res.status(200).json({
+      message: "Complaint assigned successfully",
+      report,
+    });
+  } catch (error) {
+    console.error("Error updating complaint assignment:", error);
+    res.status(500).json({
+      message: "Error updating complaint assignment",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getComplaintReplies = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const complaint = await Complaint.findById(id).select("replies");
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    res.status(200).json({
+      message: "Replies fetched successfully",
+      replies: complaint.replies,
+    });
+  } catch (error) {
+    console.error("Error fetching replies:", error);
+    res.status(500).json({
+      message: "Error fetching replies",
+      error: error.message,
+    });
+  }
+};
+
+
+export const addComplaintReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message, sender } = req.body;
+
+    if (!message || !sender) {
+      return res.status(400).json({ message: "Message and sender are required" });
+    }
+
+    const complaint = await Complaint.findById(id);
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    complaint.replies.push({ message, sender });
+    await complaint.save();
+
+    res.status(201).json({ message: "Reply added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error adding reply", error: error.message });
+  }
+};
+
+
+// Get all reports
+export const getAllReports = async (req, res) => {
+  try {
+    const reports = await Complaint.find().sort({ createdAt: -1 });
+    res.status(200).json(reports);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching reports", error: error.message });
+  }
+};
+
+// Get single report
+export const getReportById = async (req, res) => {
+  try {
+    const report = await Complaint.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: "Report not found" });
+    res.status(200).json(report);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching report", error: error.message });
+  }
+};
+
+// Update a report
+export const updateReport = async (req, res) => {
+  try {
+    const updatedReport = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedReport) return res.status(404).json({ message: "Report not found" });
+    res.status(200).json({ message: "Report updated successfully", report: updatedReport });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating report", error: error.message });
+  }
+};
+
+// Delete a report
+export const deleteReport = async (req, res) => {
+  try {
+    const deleted = await Complaint.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Report not found" });
+    res.status(200).json({ message: "Report deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting report", error: error.message });
+  }
+};

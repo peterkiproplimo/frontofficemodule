@@ -5,6 +5,7 @@ import _ from "lodash";
 import Product from "../models/Product.js";
 import ProductStat from "../models/ProductStat.js";
 import User from "../models/User.js";
+import Enquiry from "../models/Enquiry.js";
 import Transaction from "../models/Transaction.js";
 
 // Get Products
@@ -39,6 +40,72 @@ export const getCustomers = async (req, res) => {
     res.status(404).json({ message: error.message });
   }
 };
+
+
+export const createEnquiry = async (req, res) => {
+  try {
+    const {
+      enquiryType,
+      studentName,
+      dateOfBirth,
+      gender,
+      gradeInterested,
+      parentName,
+      relationship,
+      phoneNumber,
+      email,
+    } = req.body;
+
+    // ✅ Validate required fields
+    if (!enquiryType || !studentName || !dateOfBirth || !gender || !phoneNumber || !gradeInterested || !parentName || !relationship) {
+      return res.status(400).json({
+        message: "Please fill in all required fields: subject, description, reporter name, and contact.",
+      });
+    }
+
+    // ✅ Create new enquiry
+    const newEnquiry = new Enquiry({
+        enquiryType,
+        studentName,
+        dateOfBirth,
+        gender,
+        gradeInterested,
+        parentName,
+        relationship,
+        phoneNumber,
+        email,
+    });
+
+    await newEnquiry.save();
+
+    res.status(201).json({
+      message: "Enquiry created successfully.",
+      enquiry: newEnquiry,
+    });
+  
+  } catch (error) {
+    console.error("Error creating enquiry:", error);
+    res.status(500).json({
+      message: "An error occurred while creating the enquiry.",
+      error: error.message,
+    });
+  }
+};
+
+
+// ===============================
+// Get Enquiries (New Function)
+// ===============================
+export const getEnquiries = async (req, res) => {
+  try {
+    // Fetch all enquiries
+    const enquiries = await Enquiry.find().sort({ createdAt: -1 }); // latest first
+    res.status(200).json(enquiries);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
+  }
+};
+
 
 // Get Transactions
 export const getTransactions = async (req, res) => {

@@ -11,29 +11,13 @@ import { rateLimiter } from "./middlewares/rateLimiter.js";
 
 // Routes imports
 import clientRoutes from "./routes/client.js";
+import visitorRoutes from "./routes/visitors.js";
 import generalRoutes from "./routes/general.js";
 import managementRoutes from "./routes/management.js";
 import salesRoutes from "./routes/sales.js";
+import onlineRegistrationRoutes from "./routes/onlineregistration.js";
+import complaintRoutes from "./routes/complaints.js";
 
-// Data imports
-/*
-  ******************************************************
-    import User from "./models/User.js";
-    import Product from "./models/Product.js";
-    import ProductStat from "./models/ProductStat.js";
-    import Transaction from "./models/Transaction.js";
-    import OverallStat from "./models/OverallStat.js";
-    import AffiliateStat from "./models/AffiliateStat.js";
-    import {
-      dataUser,
-      dataProduct,
-      dataProductStat,
-      dataTransaction,
-      dataOverallStat,
-      dataAffiliateStat,
-    } from "./data/index.js";
-  ******************************************************
-*/
 
 // Configuration
 dotenv.config();
@@ -49,9 +33,13 @@ app.use(cors());
 
 // Routes Setup
 app.use("/client", clientRoutes);
+app.use("/visitors", visitorRoutes);
 app.use("/general", generalRoutes);
 app.use("/management", managementRoutes);
 app.use("/sales", salesRoutes);
+app.use("/onlineregistration", onlineRegistrationRoutes);
+app.use("/complaints", complaintRoutes);
+
 
 // Mongoose Setup
 const PORT = process.env.PORT || 9000;
