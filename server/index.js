@@ -49,15 +49,15 @@ app.use("/mpesa", mpesaRoutes);
 
 
 // console.log("MONGODB_URL:", process.env.MONGODB_URL);
-
+const URL1 = "MONGODB_URL=mongodb+srv://Safaribust:8R4NGbiciCMxCQX1@cluster0.yuiecha.mongodb.net/frontoffice?retryWrites=true&w=majority&appName=Cluster0";
 // Mongoose Setup
 const PORT = process.env.PORT || 9000;
 mongoose
-  .connect(process.env.MONGODB_URL,
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
+  .connect(URL1
+    // {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    // }
   )
   .then(() => {
     app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
