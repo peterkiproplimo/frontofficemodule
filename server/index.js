@@ -49,7 +49,7 @@ app.use("/mpesa", mpesaRoutes);
 
 
 // console.log("MONGODB_URL:", process.env.MONGODB_URL);
-const URL1 = "MONGODB_URL=mongodb+srv://Safaribust:8R4NGbiciCMxCQX1@cluster0.yuiecha.mongodb.net/frontoffice?retryWrites=true&w=majority&appName=Cluster0";
+const URL1 = "mongodb+srv://Safaribust:8R4NGbiciCMxCQX1@cluster0.yuiecha.mongodb.net/frontoffice?retryWrites=true&w=majority&appName=Cluster0";
 // Mongoose Setup
 const PORT = process.env.PORT || 9000;
 mongoose
