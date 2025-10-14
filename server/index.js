@@ -6,6 +6,9 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import morgan from "morgan";
 
+// Import models to ensure they are registered with Mongoose
+import Certificate from "./models/Certificate.js";
+
 // Rate Limiter
 import { rateLimiter } from "./middlewares/rateLimiter.js";
 
@@ -17,6 +20,8 @@ import managementRoutes from "./routes/management.js";
 import salesRoutes from "./routes/sales.js";
 import onlineRegistrationRoutes from "./routes/onlineregistration.js";
 import complaintRoutes from "./routes/complaints.js";
+import certificateRoutes from "./routes/certificateRoutes.js";
+import mpesaRoutes from "./routes/mpesaRoutes.js";
 
 
 // Configuration
@@ -39,15 +44,21 @@ app.use("/management", managementRoutes);
 app.use("/sales", salesRoutes);
 app.use("/onlineregistration", onlineRegistrationRoutes);
 app.use("/complaints", complaintRoutes);
+app.use("/certificates", certificateRoutes);
+app.use("/mpesa", mpesaRoutes);
 
+
+// console.log("MONGODB_URL:", process.env.MONGODB_URL);
 
 // Mongoose Setup
 const PORT = process.env.PORT || 9000;
 mongoose
-  .connect(process.env.MONGODB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URL,
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
   .then(() => {
     app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
 

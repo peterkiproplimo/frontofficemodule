@@ -26,9 +26,7 @@ router.delete('/:id', deleteReport);
 
 router.post("/:id/replies", addComplaintReply);
 router.get("/:id/replies", getComplaintReplies);
-
 router.put("/:id/status", updateReportStatus);
-
 router.put("/:id/assign", updateReportAssignment);
 
 
