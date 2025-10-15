@@ -9,6 +9,13 @@ import MpesaTransactions from "../models/MpesaTransactions.js";
 import Transrequest from "../models/Transrequest.js";
 import Logs from "../models/Logs.js";
 import Player from "../models/Player.js";
+import {
+  extractTransactionData,
+  processSuccessfulDeposit,
+  processFailedDeposit,
+  validateCallbackData,
+  formatPhoneNumber
+} from "../utils/mpesaHelpers.js";
 
 dotenv.config();
 
@@ -17,7 +24,7 @@ dotenv.config();
  * @route POST /api/mpesa/deposit
  * @access Private
  */
-export const depositTest = async (req, res) => {
+export const depositMoney = async (req, res) => {
   try {
     const { phone, amount, userId } = req.body;
     const currentUser = req.user;
@@ -26,28 +33,29 @@ export const depositTest = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: Missing token" });
     }
 
-    const phoneNumber = formatKenyanPhoneNumber(phone);
-
-    if (phoneNumber === "Invalid phone number") {
+    let phoneNumber;
+    try {
+      phoneNumber = formatPhoneNumber(phone);
+    } catch (error) {
       return res.status(400).json({ message: "Invalid phone number format" });
     }
 
-    const consumer_key = process.env.PESAXPRESS_KEY;
-    const consumer_secret = process.env.PESAXPRESS_SECRET;
+      const consumer_key = process.env.PESAXPRESS_KEY;
+      const consumer_secret = process.env.PESAXPRESS_SECRET;
     const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
 
-    const authString = `${consumer_key}:${consumer_secret}`;
-    const buffer = Buffer.from(authString, "utf-8");
-    const auth = buffer.toString("base64");
+      const authString = `${consumer_key}:${consumer_secret}`;
+      const buffer = Buffer.from(authString, "utf-8");
+      const auth = buffer.toString("base64");
 
-    const { data } = await axios.get(url, {
+      const { data } = await axios.get(url, {
       headers: { Authorization: "Basic " + auth },
-    });
+      });
 
-    if (data.access_token) {
-      const timestamp = formatDate();
-      const shortcode = process.env.MPESAEXPRESS_CODE;
-      const passkey = process.env.PESAXPRESS_PASSKEY;
+      if (data.access_token) {
+        const timestamp = formatDate();
+        const shortcode = process.env.MPESAEXPRESS_CODE;
+        const passkey = process.env.PESAXPRESS_PASSKEY;
       const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
 
       const stkPushData = {
@@ -59,19 +67,20 @@ export const depositTest = async (req, res) => {
         PartyA: phoneNumber,
         PartyB: shortcode,
         PhoneNumber: phoneNumber,
-        CallBackURL: `${process.env.BASE_URL}/api/mpesa/callback`,
+        CallBackURL: `${process.env.BASE_URL}/api/mpesa/deposit-callback`,
         AccountReference: phoneNumber,
         TransactionDesc: "Deposit to School Account",
       };
 
+      // "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
       const stkResponse = await axios.post(
-        "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
         stkPushData,
         {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${data.access_token}`,
-            Host: "api.safaricom.co.ke",
+            Host: "sandbox.safaricom.co.ke",
           },
         }
       );
@@ -85,7 +94,7 @@ export const depositTest = async (req, res) => {
           type: "1", // Deposit type
           MerchantRequestID: stkResponse.data.MerchantRequestID,
           CheckoutRequestID: stkResponse.data.CheckoutRequestID,
-          trans_time: timestamp,
+                trans_time: timestamp,
           amount: amount,
           phone: phone,
           user: userId || currentUser.userId,
@@ -94,26 +103,26 @@ export const depositTest = async (req, res) => {
         await transaction.save();
 
         // Save transaction request
-        const transrequest = new Transrequest({
+              const transrequest = new Transrequest({
           amount: amount,
           phone: phone,
-          user: currentUser.userId,
+                user: currentUser.userId,
           transactionType: 'deposit',
           description: 'M-Pesa STK Push Deposit'
-        });
-        await transrequest.save();
+              });
+              await transrequest.save();
 
-        const user = await Player.findById(currentUser.userId);
+              const user = await Player.findById(currentUser.userId);
 
         res.status(200).json({
           message: "STK push initiated successfully",
           data: {
-            _id: account?.id,
-            balance: account?.balance,
-            user: user,
+                _id: account?.id,
+                balance: account?.balance,
+                user: user,
             createdAt: account?.createdAt,
             updatedAt: account?.updatedAt,
-            active: account?.active,
+                active: account?.active,
           },
           checkoutRequestID: stkResponse.data.CheckoutRequestID,
         });
@@ -157,21 +166,21 @@ export const withdraw = async (req, res) => {
 
     const ipAddress = req.socket.remoteAddress;
 
-    const consumer_key = process.env.B2C_KEY;
-    const consumer_secret = process.env.B2C_SECRET;
+      const consumer_key = process.env.B2C_KEY;
+      const consumer_secret = process.env.B2C_SECRET;
     const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
-    const authString = `${consumer_key}:${consumer_secret}`;
-    const buffer = Buffer.from(authString, "utf-8");
-    const auth = buffer.toString("base64");
+      const authString = `${consumer_key}:${consumer_secret}`;
+      const buffer = Buffer.from(authString, "utf-8");
+      const auth = buffer.toString("base64");
 
-    const { data } = await axios.get(url, {
+      const { data } = await axios.get(url, {
       headers: { Authorization: "Basic " + auth },
-    });
+      });
 
-    if (data.access_token) {
-      const timestamp = formatDate();
-      const shortcode = process.env.B2C_SHORTCODE;
-      const passkey = process.env.B2C_PASSKEY;
+      if (data.access_token) {
+        const timestamp = formatDate();
+        const shortcode = process.env.B2C_SHORTCODE;
+        const passkey = process.env.B2C_PASSKEY;
 
       const b2cData = {
         InitiatorName: "KARIUKI",
@@ -203,15 +212,15 @@ export const withdraw = async (req, res) => {
         const filter = { user: userId || currentUser.userId };
         const update = {
           balance: parseFloat(account?.balance) - parseFloat(amount),
-        };
-        await Account.findOneAndUpdate(filter, update);
+            };
+            await Account.findOneAndUpdate(filter, update);
 
         // Save transaction record
         const transaction = new MpesaTransactions({
           type: "2", // Withdrawal type
           OriginatorConversationID: b2cResponse.data.OriginatorConversationID,
           ConversationID: b2cResponse.data.ConversationID,
-          trans_time: timestamp,
+              trans_time: timestamp,
           amount: parseInt(amount),
           phone: phone,
           user: userId || currentUser.userId,
@@ -220,14 +229,14 @@ export const withdraw = async (req, res) => {
         await transaction.save();
 
         // Save log
-        const log = new Logs({
-          ip: ipAddress,
+            const log = new Logs({
+              ip: ipAddress,
           description: `Withdrawn ${amount} - Account Name:${phone}`,
           user: userId || currentUser.userId,
           action: 'withdrawal',
           status: 'success'
-        });
-        await log.save();
+            });
+            await log.save();
 
         res.status(200).json({
           message: "Withdrawal initiated successfully",
@@ -260,18 +269,18 @@ export const transactionStatus = async (req, res) => {
   try {
     const { transactionId } = req.body;
 
-    const consumer_key = "FH9hAhMJLPK4bmgfwRA4X5rmDw6bAcFS";
-    const consumer_secret = "Acug9RyTeMxgGWQt";
+      const consumer_key = "FH9hAhMJLPK4bmgfwRA4X5rmDw6bAcFS";
+      const consumer_secret = "Acug9RyTeMxgGWQt";
     const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
     const auth = Buffer.from(`${consumer_key}:${consumer_secret}`).toString("base64");
 
-    const { data } = await axios.get(url, {
+      const { data } = await axios.get(url, {
       headers: { Authorization: "Bearer " + auth },
-    });
+      });
 
-    if (data.access_token) {
-      const timestamp = formatDate();
-      const shortcode = 600995;
+      if (data.access_token) {
+        const timestamp = formatDate();
+        const shortcode = 600995;
       const passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
       const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
 
@@ -316,7 +325,84 @@ export const transactionStatus = async (req, res) => {
 };
 
 /**
- * @desc M-Pesa STK push callback
+ * @desc M-Pesa deposit confirmation callback
+ * @route POST /api/mpesa/deposit-callback
+ * @access Public
+ */
+export const depositCallback = async (req, res) => {
+  try {
+    // Validate callback data
+    const validation = validateCallbackData(req.body);
+    if (!validation.valid) {
+      console.error("Invalid callback data:", validation.error);
+      return res.status(400).json({ 
+        message: "Invalid callback data",
+        error: validation.error 
+      });
+    }
+
+    const stkCallback = validation.data;
+    console.log("Deposit callback received:", stkCallback);
+
+    const { CheckoutRequestID } = stkCallback;
+    const ip = req.ip || req.connection.remoteAddress;
+
+    if (stkCallback.ResultCode === 0) {
+      // Transaction successful
+      const transactionData = extractTransactionData(stkCallback.CallbackMetadata);
+      
+      // Find the transaction to get user ID
+      const transaction = await MpesaTransactions.findOne({ CheckoutRequestID });
+      
+      if (!transaction) {
+        console.error("Transaction not found:", CheckoutRequestID);
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Process successful deposit
+      const result = await processSuccessfulDeposit({
+        checkoutRequestID: CheckoutRequestID,
+        transactionData: transactionData,
+        userId: transaction.user,
+        ip: ip
+      });
+
+      console.log("Deposit processed successfully:", result.message);
+      res.status(200).json({ 
+        message: "Deposit callback processed successfully",
+        result: result
+      });
+      
+    } else {
+      // Transaction failed
+      const transaction = await MpesaTransactions.findOne({ CheckoutRequestID });
+      
+      if (transaction) {
+        await processFailedDeposit({
+          checkoutRequestID: CheckoutRequestID,
+          errorMessage: stkCallback.ResultDesc,
+          userId: transaction.user,
+          ip: ip
+        });
+      }
+
+      console.log("Deposit failed:", stkCallback.ResultDesc);
+      res.status(200).json({ 
+        message: "Deposit callback received (failed transaction)" 
+      });
+    }
+
+  } catch (error) {
+    console.error("Deposit callback error:", error);
+    res.status(500).json({ 
+      message: "Deposit callback processing failed",
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * @desc M-Pesa STK push callback (general)
  * @route POST /api/mpesa/callback
  * @access Public
  */
@@ -393,22 +479,3 @@ export const transactionResult = async (req, res) => {
     res.status(500).json({ message: "Result callback processing failed" });
   }
 };
-
-/**
- * Helper function to format Kenyan phone numbers
- */
-function formatKenyanPhoneNumber(phoneNumber) {
-  // Remove any spaces and non-numeric characters
-  phoneNumber = phoneNumber.replace(/\D/g, "");
-
-  // Check if the phone number starts with "254" and has 12 digits (including the country code)
-  if (/^254\d{9}$/.test(phoneNumber)) {
-    return phoneNumber; // Phone number is already in the correct format
-  } else if (/^0\d{9}$/.test(phoneNumber)) {
-    // Add "254" in front of the phone number
-    return "254" + phoneNumber.slice(1);
-  } else {
-    // Handle invalid phone numbers
-    return "Invalid phone number";
-  }
-}

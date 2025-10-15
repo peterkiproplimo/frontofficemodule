@@ -1,8 +1,9 @@
 import express from "express";
 import {
-  depositTest,
+  depositMoney,
   withdraw,
   transactionStatus,
+  depositCallback,
   mpesaCallback,
   transactionTimeout,
   transactionResult
@@ -15,7 +16,7 @@ const router = express.Router();
  * @desc Initiate M-Pesa STK push for deposit
  * @access Private
  */
-router.post("/deposit", depositTest);
+router.post("/deposit", depositMoney);
 
 /**
  * @route POST /api/mpesa/withdraw
@@ -37,6 +38,13 @@ router.post("/transaction-status", transactionStatus);
  * @access Public (called by Safaricom)
  */
 router.post("/callback", mpesaCallback);
+
+/**
+ * @route POST /api/mpesa/deposit-callback
+ * @desc M-Pesa deposit confirmation callback
+ * @access Public (called by Safaricom)
+ */
+router.post("/deposit-callback", depositCallback);
 
 /**
  * @route POST /api/mpesa/transaction-timeout

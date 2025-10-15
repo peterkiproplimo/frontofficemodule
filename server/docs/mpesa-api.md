@@ -95,10 +95,15 @@ Queries the status of an M-Pesa transaction.
 }
 ```
 
-### 4. STK Push Callback
+### 4. STK Push Callback (General)
 **POST** `/callback`
 
-Webhook endpoint called by Safaricom for STK push results.
+General webhook endpoint called by Safaricom for STK push results.
+
+### 5. Deposit Confirmation Callback
+**POST** `/deposit-callback`
+
+Specific webhook endpoint for deposit confirmations that automatically updates user account balances.
 
 #### Request Body (from Safaricom)
 ```json
@@ -134,12 +139,12 @@ Webhook endpoint called by Safaricom for STK push results.
 }
 ```
 
-### 5. Transaction Timeout Callback
+### 6. Transaction Timeout Callback
 **POST** `/transaction-timeout`
 
 Webhook endpoint for transaction timeout notifications.
 
-### 6. Transaction Result Callback
+### 7. Transaction Result Callback
 **POST** `/transaction-result`
 
 Webhook endpoint for transaction result notifications.
@@ -203,6 +208,25 @@ System logs for user actions and transactions.
 
 ### Player
 User profile information.
+
+## Deposit Callback Features
+
+The `/deposit-callback` endpoint provides enhanced functionality for deposit confirmations:
+
+### Automatic Balance Updates
+- Automatically updates user account balance upon successful deposit
+- Records transaction details in the database
+- Creates audit logs for all deposit activities
+
+### Transaction Processing
+- Extracts transaction metadata (amount, receipt number, phone number)
+- Updates transaction status (completed/failed)
+- Links transactions to user accounts
+
+### Error Handling
+- Handles failed transactions gracefully
+- Records failure reasons in transaction records
+- Maintains audit trail for all callback events
 
 ## Usage Examples
 
