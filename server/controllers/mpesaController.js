@@ -40,9 +40,13 @@ export const depositMoney = async (req, res) => {
       return res.status(400).json({ message: "Invalid phone number format" });
     }
 
-      const consumer_key = process.env.PESAXPRESS_KEY;
-      const consumer_secret = process.env.PESAXPRESS_SECRET;
-    const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+      const consumer_key = process.env.CONSUMER_KEY;
+      const consumer_secret = process.env.CONSUMER_SECRET;
+      // https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials
+    // const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+    
+      const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+    
 
       const authString = `${consumer_key}:${consumer_secret}`;
       const buffer = Buffer.from(authString, "utf-8");
