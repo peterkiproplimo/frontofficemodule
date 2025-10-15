@@ -27,11 +27,15 @@ dotenv.config();
 export const depositMoney = async (req, res) => {
   try {
     const { phone, amount, userId } = req.body;
-    const currentUser = req.user;
+    // const currentUser = req.user || null;
 
-    if (!currentUser) {
-      return res.status(401).json({ message: "Unauthorized: Missing token" });
-    }
+    // // For registration, allow without authentication if userId is provided
+    // const isRegistration = !currentUser && userId;
+    
+    // // If no authentication and no userId, return error
+    // if (!currentUser && !userId) {
+    //   return res.status(400).json({ message: "Either authentication token or userId is required" });
+    // }
 
     let phoneNumber;
     try {
@@ -60,7 +64,7 @@ export const depositMoney = async (req, res) => {
         const timestamp = formatDate();
         const shortcode = process.env.MPESAEXPRESS_CODE;
         const passkey = process.env.PESAXPRESS_PASSKEY;
-      const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
+        const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
 
       const stkPushData = {
         BusinessShortCode: shortcode,
@@ -90,8 +94,8 @@ export const depositMoney = async (req, res) => {
       );
 
       if (stkResponse.data.ResponseCode === "0") {
-        // Find user account
-        const account = await Account.findOne({ user: currentUser.userId });
+        // Find user account (for authenticated users)
+        const account = isRegistration ? null : (currentUser ? await Account.findOne({ user: currentUser.userId }) : null);
 
         // Save transaction record
         const transaction = new MpesaTransactions({
@@ -101,26 +105,30 @@ export const depositMoney = async (req, res) => {
                 trans_time: timestamp,
           amount: amount,
           phone: phone,
-          user: userId || currentUser.userId,
+          user: userId || (currentUser ? currentUser.userId : null),
           account: account?._id,
         });
         await transaction.save();
 
         // Save transaction request
-              const transrequest = new Transrequest({
+        const transrequest = new Transrequest({
           amount: amount,
           phone: phone,
-                user: currentUser.userId,
+                user: userId || (currentUser ? currentUser.userId : null),
           transactionType: 'deposit',
-          description: 'M-Pesa STK Push Deposit'
+          description: isRegistration ? 'M-Pesa STK Push Deposit (Registration)' : 'M-Pesa STK Push Deposit'
               });
               await transrequest.save();
 
-              const user = await Player.findById(currentUser.userId);
+              const user = isRegistration ? null : (currentUser ? await Player.findById(currentUser.userId) : null);
 
         res.status(200).json({
           message: "STK push initiated successfully",
-          data: {
+          data: isRegistration ? {
+            registration: true,
+            phone: phone,
+            amount: amount
+          } : {
                 _id: account?.id,
                 balance: account?.balance,
                 user: user,
@@ -275,8 +283,8 @@ export const transactionStatus = async (req, res) => {
 
       const consumer_key = "FH9hAhMJLPK4bmgfwRA4X5rmDw6bAcFS";
       const consumer_secret = "Acug9RyTeMxgGWQt";
-    const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
-    const auth = Buffer.from(`${consumer_key}:${consumer_secret}`).toString("base64");
+      const url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+      const auth = Buffer.from(`${consumer_key}:${consumer_secret}`).toString("base64");
 
       const { data } = await axios.get(url, {
       headers: { Authorization: "Bearer " + auth },

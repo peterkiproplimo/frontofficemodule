@@ -14,7 +14,7 @@ const router = express.Router();
 /**
  * @route POST /api/mpesa/deposit
  * @desc Initiate M-Pesa STK push for deposit
- * @access Private
+ * @access Public (for registration)
  */
 router.post("/deposit", depositMoney);
 
