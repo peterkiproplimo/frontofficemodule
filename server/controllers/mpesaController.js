@@ -355,7 +355,7 @@ export const depositCallback = async (req, res) => {
     }
 
     const stkCallback = validation.data;
-    console.log("Deposit callback received:", stkCallback);
+    console.log("Deposit callback received:", JSON.stringify(stkCallback));
 
     const { CheckoutRequestID } = stkCallback;
     const ip = req.ip || req.connection.remoteAddress;
