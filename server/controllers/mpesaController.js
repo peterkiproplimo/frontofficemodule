@@ -6,7 +6,6 @@ import formatDate from "../utils/formatDate.js";
 // Importing mongoose models
 import Account from "../models/Account.js";
 import MpesaTransactions from "../models/MpesaTransactions.js";
-import Transrequest from "../models/Transrequest.js";
 import Logs from "../models/Logs.js";
 import Player from "../models/Player.js";
 import {
@@ -95,16 +94,6 @@ export const depositMoney = async (req, res) => {
           phone: phone,
         });
         await transaction.save();
-
-        // Save transaction request
-        const transrequest = new Transrequest({
-          amount: amount,
-          phone: phone,
-          transactionType: 'deposit',
-          description: 'M-Pesa STK Push Deposit (Pre-registration)'
-        });
-
-        await transrequest.save();
 
         res.status(200).json({
           message: "STK push initiated successfully",
@@ -358,15 +347,19 @@ export const depositCallback = async (req, res) => {
         return res.status(404).json({ message: "Transaction not found" });
       }
 
-      // Process successful deposit (if helper function exists)
+      // Process successful deposit (if helper function exists and user is available)
       try {
-        const result = await processSuccessfulDeposit({
-          checkoutRequestID: CheckoutRequestID,
-          transactionData: transactionData,
-          userId: transaction.user,
-          ip: ip
-        });
-        console.log("Deposit processed successfully:", result.message);
+        if (transaction.user) {
+          const result = await processSuccessfulDeposit({
+            checkoutRequestID: CheckoutRequestID,
+            transactionData: transactionData,
+            userId: transaction.user,
+            ip: ip
+          });
+          console.log("Deposit processed successfully:", result.message);
+        } else {
+          console.log("Pre-registration deposit completed - no user account to update");
+        }
       } catch (error) {
         console.log("ProcessSuccessfulDeposit not available, transaction saved directly");
       }

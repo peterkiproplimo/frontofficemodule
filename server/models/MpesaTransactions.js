@@ -91,15 +91,15 @@ const transactionSchema = new Schema(
       default: 0,
     },
 
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: "Player",
-    },
-    account: {
-      type: Schema.Types.ObjectId,
-      ref: "Account",
-      required: false,
-    },
+    // user: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: "Player",
+    // },
+    // account: {
+    //   type: Schema.Types.ObjectId,
+    //   ref: "Account",
+    //   required: false,
+    // },
   },
   { timestamps: true }
 );
