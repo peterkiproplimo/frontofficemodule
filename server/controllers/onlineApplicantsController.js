@@ -8,6 +8,13 @@ import OnlineApplicants from "../models/OnlineApplicants.js";
 
 export const registerOnlineApplicant = async (req, res) => {
   try {
+    // Debug: Log the entire request body and files
+    console.log('=== REQUEST DEBUG ===');
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files);
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('===================');
+
     const {
       // ===== Student Details =====
       first_name,
@@ -182,11 +189,11 @@ export const registerOnlineApplicant = async (req, res) => {
         if (req.files[frontendField] && req.files[frontendField][0]) {
           const file = req.files[frontendField][0];
           applicantData.documents[backendField] = {
-            filename: file.filename,
             originalName: file.originalname,
             mimetype: file.mimetype,
             size: file.size,
-            uploadDate: new Date()
+            uploadDate: new Date(),
+            buffer: file.buffer // Store file content in memory for now
           };
         }
       });
@@ -238,7 +245,8 @@ export const registerOnlineApplicant = async (req, res) => {
     console.error("Error registering applicant:", error);
     res.status(500).json({
       message: "Error registering applicant",
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
   

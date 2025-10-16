@@ -86,7 +86,7 @@ const transactionSchema = new Schema(
       required: true,
     },
     status: {
-      type: Number,
+      type: String,
       required: false,
       default: 0,
     },

@@ -20,22 +20,13 @@ import {
 dotenv.config();
 
 /**
- * @desc Initiate M-Pesa STK push for deposit
+ * @desc Initiate M-Pesa STK push for deposit (pre-registration)
  * @route POST /api/mpesa/deposit
- * @access Private
+ * @access Public
  */
 export const depositMoney = async (req, res) => {
   try {
-    const { phone, amount, userId } = req.body;
-    // const currentUser = req.user || null;
-
-    // // For registration, allow without authentication if userId is provided
-    // const isRegistration = !currentUser && userId;
-    
-    // // If no authentication and no userId, return error
-    // if (!currentUser && !userId) {
-    //   return res.status(400).json({ message: "Either authentication token or userId is required" });
-    // }
+    const { phone, amount } = req.body;
 
     let phoneNumber;
     try {
@@ -94,19 +85,14 @@ export const depositMoney = async (req, res) => {
       );
 
       if (stkResponse.data.ResponseCode === "0") {
-        // Find user account (for authenticated users)
-        // const account = isRegistration ? null : (currentUser ? await Account.findOne({ user: currentUser.userId }) : null);
-
         // Save transaction record
         const transaction = new MpesaTransactions({
           type: "1", // Deposit type
           MerchantRequestID: stkResponse.data.MerchantRequestID,
           CheckoutRequestID: stkResponse.data.CheckoutRequestID,
-                trans_time: timestamp,
+          trans_time: timestamp,
           amount: amount,
           phone: phone,
-          // user: userId || (currentUser ? currentUser.userId : null),
-          // account: account?._id,
         });
         await transaction.save();
 
@@ -114,28 +100,18 @@ export const depositMoney = async (req, res) => {
         const transrequest = new Transrequest({
           amount: amount,
           phone: phone,
-                user: userId || (currentUser ? currentUser.userId : null),
           transactionType: 'deposit',
-          description: isRegistration ? 'M-Pesa STK Push Deposit (Registration)' : 'M-Pesa STK Push Deposit'
-              });
+          description: 'M-Pesa STK Push Deposit (Pre-registration)'
+        });
 
         await transrequest.save();
 
-        const user = isRegistration ? null : (currentUser ? await Player.findById(currentUser.userId) : null);
-
         res.status(200).json({
           message: "STK push initiated successfully",
-          data: isRegistration ? {
+          data: {
             registration: true,
             phone: phone,
             amount: amount
-          } : {
-                _id: account?.id,
-                balance: account?.balance,
-                user: user,
-                createdAt: account?.createdAt,
-                updatedAt: account?.updatedAt,
-                active: account?.active,
           },
           checkoutRequestID: stkResponse.data.CheckoutRequestID,
         });
@@ -364,26 +340,58 @@ export const depositCallback = async (req, res) => {
       // Transaction successful
       const transactionData = extractTransactionData(stkCallback.CallbackMetadata);
       
-      // Find the transaction to get user ID
-      const transaction = await MpesaTransactions.findOne({ CheckoutRequestID });
+      // Find and update the transaction with receipt details
+      const transaction = await MpesaTransactions.findOneAndUpdate(
+        { CheckoutRequestID },
+        {
+          status: 'completed',
+          mpesaReceiptNumber: transactionData.receiptNumber,
+          transactionDate: transactionData.transactionDate,
+          phoneNumber: transactionData.phoneNumber,
+          amount: transactionData.amount
+        },
+        { new: true }
+      );
       
       if (!transaction) {
         console.error("Transaction not found:", CheckoutRequestID);
         return res.status(404).json({ message: "Transaction not found" });
       }
 
-      // Process successful deposit
-      const result = await processSuccessfulDeposit({
-        checkoutRequestID: CheckoutRequestID,
-        transactionData: transactionData,
-        userId: transaction.user,
-        ip: ip
-      });
+      // Process successful deposit (if helper function exists)
+      try {
+        const result = await processSuccessfulDeposit({
+          checkoutRequestID: CheckoutRequestID,
+          transactionData: transactionData,
+          userId: transaction.user,
+          ip: ip
+        });
+        console.log("Deposit processed successfully:", result.message);
+      } catch (error) {
+        console.log("ProcessSuccessfulDeposit not available, transaction saved directly");
+      }
 
-      console.log("Deposit processed successfully:", result.message);
+      // Emit real-time update via WebSocket if available
+      try {
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('payment_update', {
+            checkoutRequestID: CheckoutRequestID,
+            status: 'completed',
+            receiptNumber: transactionData.receiptNumber,
+            amount: transactionData.amount,
+            phone: transaction.phone
+          });
+        }
+      } catch (error) {
+        console.log('WebSocket not available:', error.message);
+      }
+
       res.status(200).json({ 
         message: "Deposit callback processed successfully",
-        result: result
+        transactionId: CheckoutRequestID,
+        receiptNumber: transactionData.receiptNumber,
+        amount: transactionData.amount
       });
       
     } else {
@@ -490,5 +498,49 @@ export const transactionResult = async (req, res) => {
   } catch (error) {
     console.error("Result callback error:", error);
     res.status(500).json({ message: "Result callback processing failed" });
+  }
+};
+
+/**
+ * @desc Check transaction status by CheckoutRequestID
+ * @route GET /api/mpesa/transaction-status/:checkoutRequestID
+ * @access Public
+ */
+export const getTransactionStatus = async (req, res) => {
+  try {
+    const { checkoutRequestID } = req.params;
+
+    if (!checkoutRequestID) {
+      return res.status(400).json({ message: "CheckoutRequestID is required" });
+    }
+
+    // Find the transaction
+    const transaction = await MpesaTransactions.findOne({ CheckoutRequestID: checkoutRequestID });
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Return transaction details including receipt number if completed
+    res.status(200).json({
+      message: "Transaction found",
+      data: {
+        checkoutRequestID: transaction.CheckoutRequestID,
+        status: transaction.status,
+        amount: transaction.amount,
+        phone: transaction.phone,
+        mpesaReceiptNumber: transaction.mpesaReceiptNumber,
+        transactionDate: transaction.transactionDate,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error("Get transaction status error:", error);
+    res.status(500).json({
+      message: "Failed to get transaction status",
+      error: error.message
+    });
   }
 };

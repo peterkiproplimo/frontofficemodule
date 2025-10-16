@@ -6,7 +6,8 @@ import {
   depositCallback,
   mpesaCallback,
   transactionTimeout,
-  transactionResult
+  transactionResult,
+  getTransactionStatus
 } from "../controllers/mpesaController.js";
 
 const router = express.Router();
@@ -59,5 +60,12 @@ router.post("/transaction-timeout", transactionTimeout);
  * @access Public (called by Safaricom)
  */
 router.post("/transaction-result", transactionResult);
+
+/**
+ * @route GET /api/mpesa/transaction-status/:checkoutRequestID
+ * @desc Get transaction status by CheckoutRequestID
+ * @access Public
+ */
+router.get("/transaction-status/:checkoutRequestID", getTransactionStatus);
 
 export default router;
