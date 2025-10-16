@@ -62,8 +62,8 @@ export const depositMoney = async (req, res) => {
 
       if (data.access_token) {
         const timestamp = formatDate();
-        const shortcode = "174379";
-        const passkey = "Uk9xaUtsRUZGOUdiNEJtWXRUYmhQbHhrME5ZZkFUZzg6UjhLZDZ3Rlg2b3QzTDdUaA";
+        const shortcode = 174379;
+        const passkey = "Uk9xaUtsRUZGOUdiNEJtWXRUYmhQbHhrME5ZZkFUZzg6UjhLZDZ3Rlg2b3QzTDdUaA==";
         const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
 
       const stkPushData = {
@@ -132,8 +132,8 @@ export const depositMoney = async (req, res) => {
                 _id: account?.id,
                 balance: account?.balance,
                 user: user,
-            createdAt: account?.createdAt,
-            updatedAt: account?.updatedAt,
+                createdAt: account?.createdAt,
+                updatedAt: account?.updatedAt,
                 active: account?.active,
           },
           checkoutRequestID: stkResponse.data.CheckoutRequestID,
