@@ -95,7 +95,7 @@ export const depositMoney = async (req, res) => {
 
       if (stkResponse.data.ResponseCode === "0") {
         // Find user account (for authenticated users)
-        const account = isRegistration ? null : (currentUser ? await Account.findOne({ user: currentUser.userId }) : null);
+        // const account = isRegistration ? null : (currentUser ? await Account.findOne({ user: currentUser.userId }) : null);
 
         // Save transaction record
         const transaction = new MpesaTransactions({
@@ -105,8 +105,8 @@ export const depositMoney = async (req, res) => {
                 trans_time: timestamp,
           amount: amount,
           phone: phone,
-          user: userId || (currentUser ? currentUser.userId : null),
-          account: account?._id,
+          // user: userId || (currentUser ? currentUser.userId : null),
+          // account: account?._id,
         });
         await transaction.save();
 
