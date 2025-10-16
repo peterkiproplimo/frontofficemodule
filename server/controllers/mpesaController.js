@@ -44,8 +44,8 @@ export const depositMoney = async (req, res) => {
       return res.status(400).json({ message: "Invalid phone number format" });
     }
 
-      const consumer_key = "ROqiKlEFF9Gb4BmYtTbhPlxk0NYfATg8";
-      const consumer_secret = "R8Kd6wFX6ot3L7Th";
+      const consumer_key = "GJmk0oWoLPUqFCeJqKiHzGojZK8EdJyeZn6feiGge2yx02pi";
+      const consumer_secret = "neJK0ula6Gcw0lH3MDjpsrPNibJEiv5t2XJBNgcoGPuuFOP1YNVGmflMTFAMUA6L";
       // https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials
     // const url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
     
@@ -63,7 +63,7 @@ export const depositMoney = async (req, res) => {
       if (data.access_token) {
         const timestamp = formatDate();
         const shortcode = 174379;
-        const passkey = "Uk9xaUtsRUZGOUdiNEJtWXRUYmhQbHhrME5ZZkFUZzg6UjhLZDZ3Rlg2b3QzTDdUaA";
+        const passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
         const password = Buffer.from(shortcode + passkey + timestamp).toString("base64");
 
       const stkPushData = {
