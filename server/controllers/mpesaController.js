@@ -75,7 +75,7 @@ export const depositMoney = async (req, res) => {
         PartyA: phoneNumber,
         PartyB: shortcode,
         PhoneNumber: phoneNumber,
-        CallBackURL: `${process.env.BASE_URL}/api/mpesa/deposit-callback`,
+        CallBackURL: `https://frontoffice-t61e.onrender.com/mpesa/deposit-callback`,
         AccountReference: phoneNumber,
         TransactionDesc: "Deposit to School Account",
       };
@@ -118,9 +118,10 @@ export const depositMoney = async (req, res) => {
           transactionType: 'deposit',
           description: isRegistration ? 'M-Pesa STK Push Deposit (Registration)' : 'M-Pesa STK Push Deposit'
               });
-              await transrequest.save();
 
-              const user = isRegistration ? null : (currentUser ? await Player.findById(currentUser.userId) : null);
+        await transrequest.save();
+
+        const user = isRegistration ? null : (currentUser ? await Player.findById(currentUser.userId) : null);
 
         res.status(200).json({
           message: "STK push initiated successfully",
@@ -202,8 +203,8 @@ export const withdraw = async (req, res) => {
         PartyA: shortcode,
         PartyB: parseInt(phone),
         Remarks: `Customer Withdrawal`,
-        QueueTimeOutURL: `${process.env.BASE_URL}/api/mpesa/transaction-timeout`,
-        ResultURL: `${process.env.BASE_URL}/api/mpesa/transaction-result`,
+        QueueTimeOutURL: `https://frontoffice-t61e.onrender.com/mpesa/transaction-timeout`,
+        ResultURL: `https://frontoffice-t61e.onrender.com/mpesa/transaction-result`,
         Occassion: `Customer Withdrawal`,
       };
 
