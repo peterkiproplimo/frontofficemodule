@@ -163,9 +163,87 @@ export const addComplaintReply = async (req, res) => {
 // Get all reports
 export const getAllReports = async (req, res) => {
   try {
-    const reports = await Complaint.find().sort({ createdAt: -1 });
-    res.status(200).json(reports);
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = "", 
+      grade = "", 
+      stream = "", 
+      sortField = "createdAt", 
+      sortOrder = "desc",
+      status = [],
+      priority = "",
+      category = ""
+    } = req.query;
+
+    console.log("Complaints API called with params:", req.query);
+
+    // Build query object
+    let query = {};
+
+    // Add search functionality
+    if (search) {
+      console.log("Search term:", search);
+      query.$or = [
+        { subject: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { reporterName: { $regex: search, $options: "i" } },
+        { reporterContact: { $regex: search, $options: "i" } },
+        { assignedTo: { $regex: search, $options: "i" } }
+      ];
+      console.log("Search query:", query);
+    }
+
+    // Add status filter
+    if (status && status.length > 0) {
+      query.status = { $in: status };
+    }
+
+    // Add priority filter
+    if (priority) {
+      query.priority = priority;
+    }
+
+    // Add category filter
+    if (category) {
+      query.category = category;
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortField] = sortOrder === "asc" ? 1 : -1;
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    console.log("Final query:", query);
+    console.log("Sort object:", sortObj);
+
+    // Execute query with pagination
+    const reports = await Complaint.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const total = await Complaint.countDocuments(query);
+
+    console.log("Found reports:", reports.length, "Total:", total);
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    res.json({
+      data: reports,
+      pagination: {
+        current_page: parseInt(page),
+        total: total,
+        total_pages: totalPages,
+        per_page: parseInt(limit)
+      }
+    });
   } catch (error) {
+    console.error('Error fetching reports:', error);
     res.status(500).json({ message: "Error fetching reports", error: error.message });
   }
 };

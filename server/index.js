@@ -22,6 +22,8 @@ import onlineRegistrationRoutes from "./routes/onlineregistration.js";
 import complaintRoutes from "./routes/complaints.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import mpesaRoutes from "./routes/mpesaRoutes.js";
+import cohortRoutes from "./routes/cohortRoutes.js";
+import frontOfficeRoutes from "./routes/frontOfficeRoutes.js";
 
 
 // Configuration
@@ -47,6 +49,8 @@ app.use("/onlineregistration", onlineRegistrationRoutes);
 app.use("/complaints", complaintRoutes);
 app.use("/certificates", certificateRoutes);
 app.use("/mpesa", mpesaRoutes);
+app.use("/cohorts", cohortRoutes);
+app.use("/front-office", frontOfficeRoutes);
 
 
 // console.log("MONGODB_URL:", process.env.MONGODB_URL);

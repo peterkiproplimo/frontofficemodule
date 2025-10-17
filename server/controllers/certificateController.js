@@ -105,18 +105,37 @@ export const getAllCertificates = async (req, res) => {
     const {
       page = 1,
       limit = 10,
+      search = "",
       studentId,
       certificateType,
-      status,
+      type,
+      certificateCategories,
       sortBy = 'issueDate',
       sortOrder = 'desc'
     } = req.query;
+
+    console.log("Certificates API called with params:", req.query);
 
     // Build filter object
     const filter = {};
     if (studentId) filter.studentId = studentId;
     if (certificateType) filter.certificateType = certificateType;
-    if (status) filter.status = status;
+    if (type) filter.type = type;
+    if (certificateCategories) filter.certificateCategories = certificateCategories;
+
+    // Add search functionality
+    if (search) {
+      console.log("Search term:", search);
+      filter.$or = [
+        { studentName: { $regex: search, $options: "i" } },
+        { certificateType: { $regex: search, $options: "i" } },
+        { type: { $regex: search, $options: "i" } },
+        { certificateCategories: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { studentId: { $regex: search, $options: "i" } }
+      ];
+      console.log("Search query:", filter);
+    }
 
     // Build sort object
     const sort = {};
@@ -124,6 +143,9 @@ export const getAllCertificates = async (req, res) => {
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    console.log("Final filter:", filter);
+    console.log("Sort object:", sort);
 
     // Fetch certificates with pagination
     const certificates = await Certificate.find(filter)
@@ -136,8 +158,11 @@ export const getAllCertificates = async (req, res) => {
     // Get total count for pagination
     const total = await Certificate.countDocuments(filter);
 
+    console.log("Found certificates:", certificates.length, "Total:", total);
+
     res.status(200).json({
-      certificates,
+      data: certificates,
+      certificates, // Keep for backward compatibility
       pagination: {
         current_page: parseInt(page),
         total_pages: Math.ceil(total / parseInt(limit)),

@@ -98,8 +98,15 @@ const onlineApplicantSchema = new mongoose.Schema({
   // ===== Application Status =====
   applicationStatus: { 
     type: String, 
-    enum: ['Pending', 'Shortlisted', 'Confirmed'], 
+    enum: ['Pending', 'Shortlisted', 'Confirmed', 'Rejected'], 
     default: 'Pending' 
+  },
+
+  // ===== Cohort Information =====
+  cohortId: {
+    type: String,
+    required: false,
+    index: true
   },
   
   // ===== Metadata =====
@@ -107,9 +114,18 @@ const onlineApplicantSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
   
   // ===== Admin fields =====
-  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewedBy: { type: mongoose.Schema.Types.Mixed }, // Can be ObjectId or String
   reviewedAt: { type: Date },
   adminNotes: { type: String },
+  rejectionReason: { type: String },
+  
+  // ===== Status History Tracking =====
+  statusHistory: [{
+    status: { type: String, enum: ['Pending', 'Shortlisted', 'Confirmed', 'Rejected'] },
+    changedBy: { type: String },
+    changedAt: { type: Date, default: Date.now },
+    notes: { type: String }
+  }],
   
   // ===== SMS Notification tracking =====
   smsSentToParent: { type: Boolean, default: false },

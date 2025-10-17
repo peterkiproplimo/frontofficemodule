@@ -24,7 +24,7 @@ const reportSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: ["Technical", "Service", "Billing", "Other"], // example categories
+      enum: ["Academic", "Administrative", "Facilities", "Behavioral", "Technical", "Other"],
       default: "Other",
     },
 
@@ -52,7 +52,7 @@ const reportSchema = new mongoose.Schema(
       trim: true,
     },
 
-    status: { type: String, enum: ['Open', 'In Progress', 'Resolved'], default: 'Open' },
+    status: { type: String, enum: ['Open', 'In Progress', 'Resolved', 'Closed'], default: 'Open' },
 
     replies: [ReplySchema], // 👈 add this line
 

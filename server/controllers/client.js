@@ -98,11 +98,84 @@ export const createEnquiry = async (req, res) => {
 // ===============================
 export const getEnquiries = async (req, res) => {
   try {
-    // Fetch all enquiries
-    const enquiries = await Enquiry.find().sort({ createdAt: -1 }); // latest first
-    res.status(200).json(enquiries);
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = "", 
+      grade = "", 
+      stream = "", 
+      sortField = "createdAt", 
+      sortOrder = "desc",
+      status = [],
+      source = ""
+    } = req.query;
+
+    // Build query object
+    let query = {};
+
+    // Add search functionality
+    if (search) {
+      console.log("Search term:", search);
+      query.$or = [
+        { studentName: { $regex: search, $options: "i" } },
+        { parentName: { $regex: search, $options: "i" } },
+        { phoneNumber: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { gradeInterested: { $regex: search, $options: "i" } },
+        { previousSchool: { $regex: search, $options: "i" } },
+        { notes: { $regex: search, $options: "i" } }
+      ];
+      console.log("Search query:", query);
+    }
+
+    // Add grade filter
+    if (grade) {
+      query.gradeInterested = grade;
+    }
+
+    // Add status filter
+    if (status && status.length > 0) {
+      query.status = { $in: status };
+    }
+
+    // Add source filter
+    if (source) {
+      query.enquirySource = source;
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortField] = sortOrder === "asc" ? 1 : -1;
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch enquiries with pagination and filtering
+    console.log("Final query:", JSON.stringify(query, null, 2));
+    const enquiries = await Enquiry.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const total = await Enquiry.countDocuments(query);
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    console.log("Found enquiries:", enquiries.length, "Total:", total);
+
+    // Return data with pagination info
+    res.status(200).json({
+      data: enquiries,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total: total,
+        per_page: parseInt(limit)
+      }
+    });
   } catch (error) {
-    res.status(404).json({ message: error.message });
+    console.error("Error fetching enquiries:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 

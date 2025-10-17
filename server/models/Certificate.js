@@ -25,6 +25,15 @@ const certificateSchema = new mongoose.Schema({
     required: true,
     enum: ['Academic', 'Training', 'Sports', 'Leadership', 'Community Service', 'Other']
   },
+  type: { 
+    type: String,
+    enum: ['Academic', 'Completion', 'Achievement', 'Participation', 'Merit']
+  },
+  certificateCategories: {
+    type: String,
+    enum: ['Upload scanned certificates', 'Awards', 'Recognitions', 'Academic', 'Training', 'Sports', 'Leadership', 'Community Service', 'Other'],
+    default: 'Academic'
+  },
   description: { 
     type: String 
   },
@@ -71,7 +80,7 @@ const certificateSchema = new mongoose.Schema({
   // Status and Verification
   status: { 
     type: String, 
-    enum: ['Active', 'Expired', 'Revoked', 'Pending'], 
+    enum: ['Active', 'Expired', 'Revoked'], 
     default: 'Active' 
   },
   isVerified: { 

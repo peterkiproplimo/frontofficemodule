@@ -126,21 +126,80 @@ export const checkOutVisitor = async (req, res) => {
  */
 export const getVisitors = async (req, res) => {
   try {
-    const { status, startDate, endDate } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = "", 
+      grade = "", 
+      stream = "", 
+      sortField = "createdAt", 
+      sortOrder = "desc",
+      status = [],
+      company = "",
+      purpose = ""
+    } = req.query;
 
-    const filter = {};
+    // Build query object
+    let query = {};
 
-    if (status) filter.status = status;
-    if (startDate && endDate) {
-      filter.visitDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
+    // Add search functionality
+    if (search) {
+      console.log("Search term:", search);
+      query.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { idNumber: { $regex: search, $options: "i" } },
+        { phoneNumber: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { company: { $regex: search, $options: "i" } },
+        { purpose: { $regex: search, $options: "i" } },
+        { hostName: { $regex: search, $options: "i" } }
+      ];
+      console.log("Search query:", query);
     }
 
-    const visitors = await Visitor.find(filter).sort({ createdAt: -1 });
+    // Add status filter
+    if (status && status.length > 0) {
+      query.status = { $in: status };
+    }
 
-    res.json(visitors);
+    // Add company filter
+    if (company) {
+      query.company = company;
+    }
+
+    // Add purpose filter
+    if (purpose) {
+      query.purpose = purpose;
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortField] = sortOrder === "asc" ? 1 : -1;
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Execute query with pagination
+    const visitors = await Visitor.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const total = await Visitor.countDocuments(query);
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    res.json({
+      data: visitors,
+      pagination: {
+        current_page: parseInt(page),
+        total: total,
+        total_pages: totalPages,
+        per_page: parseInt(limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching visitors:', error);
     res.status(500).json({ message: 'Error fetching visitors', error: error.message });

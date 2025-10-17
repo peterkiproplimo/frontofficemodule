@@ -5,7 +5,10 @@ import {
 
   registerOnlineApplicant,
   getAllOnlineApplicants,
-  getOnlineApplicantById
+  getOnlineApplicantById,
+  shortlistApplicant,
+  confirmApplicant,
+  rejectApplicant
 
 } from "../controllers/onlineApplicantsController.js";
 
@@ -54,5 +57,9 @@ router.get("/", getAllOnlineApplicants);
 // Get one applicant by ID
 router.get("/:id", getOnlineApplicantById);
 
+// Application status management routes
+router.put("/:id/shortlist", shortlistApplicant);
+router.put("/:id/confirm", confirmApplicant);
+router.put("/:id/reject", rejectApplicant);
 
 export default router;

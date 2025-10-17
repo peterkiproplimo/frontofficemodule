@@ -1,5 +1,10 @@
 import OnlineApplicants from "../models/OnlineApplicants.js";
 
+// Helper function to get reviewer ID
+const getReviewerId = (req, reviewedBy) => {
+  return reviewedBy || req.user?.id || req.user?.name || 'System';
+};
+
 /**
  * @desc Register new online applicant (student + parent data)
  * @route POST /api/online-applicants
@@ -59,6 +64,9 @@ export const registerOnlineApplicant = async (req, res) => {
 
       // ===== Application Status =====
       applicationStatus,
+
+      // ===== Cohort Information =====
+      cohortId,
 
       // ===== Optional metadata / admin fields =====
       reviewedBy,
@@ -157,6 +165,9 @@ export const registerOnlineApplicant = async (req, res) => {
 
       // Application Status
       applicationStatus: applicationStatus || 'Pending',
+
+      // Cohort Information
+      cohortId: cohortId || null,
 
       // Optional fields
       grade,
@@ -279,12 +290,276 @@ export const getOnlineApplicantById = async (req, res) => {
  */
 export const getAllOnlineApplicants = async (req, res) => {
     try {
-      const applicants = await OnlineApplicants.find().sort({ createdAt: -1 }); // newest first
-      res.status(200).json(applicants);
+      const {
+        page = 1,
+        limit = 10,
+        search = '',
+        grade,
+        stream,
+        status,
+        cohortId,
+        sortField = 'createdAt',
+        sortOrder = 'desc'
+      } = req.query;
+
+      // Build query object
+      const query = {};
+
+      // Search functionality
+      if (search) {
+        query.$or = [
+          { first_name: { $regex: search, $options: 'i' } },
+          { last_name: { $regex: search, $options: 'i' } },
+          { guardian_first_name: { $regex: search, $options: 'i' } },
+          { guardian_email: { $regex: search, $options: 'i' } },
+          { guardian_phone: { $regex: search, $options: 'i' } },
+          { kcpeIndexNumber: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Grade filter
+      if (grade) {
+        query.classApplyingFor = grade;
+      }
+
+      // Stream filter (if applicable)
+      if (stream) {
+        query.stream = stream;
+      }
+
+      // Status filter
+      if (status) {
+        if (Array.isArray(status)) {
+          query.applicationStatus = { $in: status };
+        } else {
+          query.applicationStatus = status;
+        }
+      }
+
+      // Cohort filter
+      if (cohortId) {
+        query.cohortId = cohortId;
+      }
+
+      // Build sort object
+      const sort = {};
+      sort[sortField] = sortOrder === 'asc' ? 1 : -1;
+
+      // Calculate pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Execute query with pagination and sorting
+      const applicants = await OnlineApplicants.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit));
+
+      // Get total count for pagination
+      const total = await OnlineApplicants.countDocuments(query);
+
+      // Calculate pagination info
+      const totalPages = Math.ceil(total / parseInt(limit));
+
+      res.status(200).json({
+        applicants,
+        pagination: {
+          current_page: parseInt(page),
+          total,
+          total_pages: totalPages,
+          limit: parseInt(limit)
+        }
+      });
+
     } catch (error) {
       console.error("Error fetching applicants:", error);
       res.status(500).json({ message: "Server error", error: error.message });
     }
+};
 
+/**
+ * @desc Shortlist an applicant
+ * @route PUT /api/online-applicants/:id/shortlist
+ */
+export const shortlistApplicant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNotes, reviewedBy } = req.body;
+
+    // Find the applicant
+    const applicant = await OnlineApplicants.findById(id);
+    if (!applicant) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Applicant not found" 
+      });
+    }
+
+    // Check if applicant is in pending status
+    if (applicant.applicationStatus !== 'Pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot shortlist applicant with status: ${applicant.applicationStatus}. Only pending applicants can be shortlisted.`
+      });
+    }
+
+    // Update applicant status to shortlisted
+    const updatedApplicant = await OnlineApplicants.findByIdAndUpdate(
+      id,
+      {
+        applicationStatus: 'Shortlisted',
+        reviewedBy: getReviewerId(req, reviewedBy),
+        reviewedAt: new Date(),
+        adminNotes: adminNotes || applicant.adminNotes,
+        $push: {
+          statusHistory: {
+            status: 'Shortlisted',
+            changedBy: getReviewerId(req, reviewedBy),
+            changedAt: new Date(),
+            notes: adminNotes || 'Applicant shortlisted for review'
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Applicant shortlisted successfully",
+      applicant: updatedApplicant
+    });
+
+  } catch (error) {
+    console.error("Error shortlisting applicant:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc Confirm an applicant
+ * @route PUT /api/online-applicants/:id/confirm
+ */
+export const confirmApplicant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNotes, reviewedBy } = req.body;
+
+    // Find the applicant
+    const applicant = await OnlineApplicants.findById(id);
+    if (!applicant) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Applicant not found" 
+      });
+    }
+
+    // Check if applicant is in shortlisted status
+    if (applicant.applicationStatus !== 'Shortlisted') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot confirm applicant with status: ${applicant.applicationStatus}. Only shortlisted applicants can be confirmed.`
+      });
+    }
+
+    // Update applicant status to confirmed
+    const updatedApplicant = await OnlineApplicants.findByIdAndUpdate(
+      id,
+      {
+        applicationStatus: 'Confirmed',
+        reviewedBy: getReviewerId(req, reviewedBy),
+        reviewedAt: new Date(),
+        adminNotes: adminNotes || applicant.adminNotes,
+        $push: {
+          statusHistory: {
+            status: 'Confirmed',
+            changedBy: getReviewerId(req, reviewedBy),
+            changedAt: new Date(),
+            notes: adminNotes || 'Application confirmed and accepted'
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Applicant confirmed successfully",
+      applicant: updatedApplicant
+    });
+
+  } catch (error) {
+    console.error("Error confirming applicant:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc Reject an applicant
+ * @route PUT /api/online-applicants/:id/reject
+ */
+export const rejectApplicant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminNotes, reviewedBy, rejectionReason } = req.body;
+
+    // Find the applicant
+    const applicant = await OnlineApplicants.findById(id);
+    if (!applicant) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Applicant not found" 
+      });
+    }
+
+    // Check if applicant is in pending or shortlisted status
+    if (!['Pending', 'Shortlisted'].includes(applicant.applicationStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot reject applicant with status: ${applicant.applicationStatus}. Only pending or shortlisted applicants can be rejected.`
+      });
+    }
+
+    // Update applicant status to rejected
+    const updatedApplicant = await OnlineApplicants.findByIdAndUpdate(
+      id,
+      {
+        applicationStatus: 'Rejected',
+        reviewedBy: getReviewerId(req, reviewedBy),
+        reviewedAt: new Date(),
+        adminNotes: adminNotes || applicant.adminNotes,
+        rejectionReason: rejectionReason || 'Application rejected',
+        $push: {
+          statusHistory: {
+            status: 'Rejected',
+            changedBy: getReviewerId(req, reviewedBy),
+            changedAt: new Date(),
+            notes: adminNotes || rejectionReason || 'Application rejected'
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Applicant rejected successfully",
+      applicant: updatedApplicant
+    });
+
+  } catch (error) {
+    console.error("Error rejecting applicant:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
 };
   
