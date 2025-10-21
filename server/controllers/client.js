@@ -92,6 +92,44 @@ export const createEnquiry = async (req, res) => {
   }
 };
 
+// ===============================
+// Update Enquiry by ID
+// ===============================
+export const updateEnquiry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    console.log('Updating enquiry with ID:', id);
+    console.log('Update data:', updateData);
+
+    // Find and update the enquiry
+    const updatedEnquiry = await Enquiry.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedEnquiry) {
+      return res.status(404).json({
+        message: "Enquiry not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Enquiry updated successfully",
+      enquiry: updatedEnquiry,
+    });
+
+  } catch (error) {
+    console.error("Error updating enquiry:", error);
+    res.status(500).json({
+      message: "An error occurred while updating the enquiry.",
+      error: error.message,
+    });
+  }
+};
+
 
 // ===============================
 // Get Enquiries (New Function)

@@ -20,7 +20,7 @@ const EnquirySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["New", "In Progress", "Closed"],
+      enum: ["New", "In Progress", "Closed", "Converted"],
       default: "New",
     },
 
@@ -89,6 +89,20 @@ const EnquirySchema = new mongoose.Schema(
     // Additional Notes
     notes: {
       type: String,
+    },
+
+    // Conversion tracking fields
+    converted_to_application: {
+      type: Boolean,
+      default: false,
+    },
+    application_id: {
+      type: String,
+      required: false,
+    },
+    conversion_date: {
+      type: Date,
+      required: false,
     },
   },
   {

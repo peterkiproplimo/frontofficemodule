@@ -24,6 +24,9 @@ import certificateRoutes from "./routes/certificateRoutes.js";
 import mpesaRoutes from "./routes/mpesaRoutes.js";
 import cohortRoutes from "./routes/cohortRoutes.js";
 import frontOfficeRoutes from "./routes/frontOfficeRoutes.js";
+import subjectRoutes from "./routes/subjectRoutes.js";
+import competencyRoutes from "./routes/competencyRoutes.js";
+import projectEvidenceRoutes from "./routes/projectEvidenceRoutes.js";
 
 
 // Configuration
@@ -51,7 +54,25 @@ app.use("/certificates", certificateRoutes);
 app.use("/mpesa", mpesaRoutes);
 app.use("/cohorts", cohortRoutes);
 app.use("/front-office", frontOfficeRoutes);
+app.use("/subjects", subjectRoutes);
+app.use("/competencies", competencyRoutes);
+app.use("/project-evidences", projectEvidenceRoutes);
 
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
+
+console.log("✅ Node.js app started successfully!");
+
+// Access an environment variable
+const myEnvVar = process.env.MY_TEST_VARIABLE;
+
+// Print it to the console
+if (myEnvVar) {
+  console.log("🌍 MY_TEST_VARIABLE value:", myEnvVar);
+} else {
+  console.log("⚠️ MY_TEST_VARIABLE is not set. Please define it in Render dashboard > Environment.");
+}
 
 // console.log("MONGODB_URL:", process.env.MONGODB_URL);
 const URL1 = "mongodb+srv://Safaribust:8R4NGbiciCMxCQX1@cluster0.yuiecha.mongodb.net/frontoffice?retryWrites=true&w=majority&appName=Cluster0";

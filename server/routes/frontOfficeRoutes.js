@@ -17,6 +17,12 @@ router.get("/dashboard/visitor-reports", getVisitorReports);
 router.get("/dashboard/complaint-sla", getComplaintSLAReports);
 router.get("/dashboard/application-pipeline", getApplicationPipelineReports);
 
+// Alternative routes for frontend compatibility
+router.get("/enquiries/conversion-funnel", getEnquiryConversionFunnel);
+router.get("/visitors/reports", getVisitorReports);
+router.get("/complaints/sla-reports", getComplaintSLAReports);
+router.get("/applications/pipeline-reports", getApplicationPipelineReports);
+
 // Export routes
 router.get("/export/:reportType", exportFrontOfficeReport);
 

@@ -17,7 +17,9 @@ import QRCode from "qrcode";
       email,
       company,
       purpose,
-      hostName
+      hostName,
+      expectedDuration = 60, // Default 60 minutes
+      notes
     } = req.body;
 
     // Validate required fields
@@ -43,7 +45,10 @@ import QRCode from "qrcode";
       passId,
       status: "Checked In", // ✅ Default status
       qrCode: qrCodeData,   // optionally store QR code too
-
+      expectedDuration: parseInt(expectedDuration),
+      checkInTime: new Date(),
+      lastActivityTime: new Date(),
+      notes
     });
 
     res.status(201).json({
@@ -108,11 +113,31 @@ export const checkOutVisitor = async (req, res) => {
       return res.status(400).json({ message: 'Visitor is not currently checked in' });
     }
 
-    visitor.checkOutTime = new Date();
+    const checkOutTime = new Date();
+    visitor.checkOutTime = checkOutTime;
     visitor.status = 'Checked Out';
+    
+    // Calculate actual duration
+    if (visitor.checkInTime) {
+      const durationMs = checkOutTime - visitor.checkInTime;
+      visitor.actualDuration = Math.round(durationMs / (1000 * 60)); // Convert to minutes
+      
+      // Check if visitor overstayed
+      if (visitor.actualDuration > visitor.expectedDuration) {
+        visitor.isOverstayed = true;
+        visitor.overstayMinutes = visitor.actualDuration - visitor.expectedDuration;
+      }
+    }
+    
     await visitor.save();
 
-    res.json({ message: 'Visitor checked out successfully', visitor });
+    res.json({ 
+      message: 'Visitor checked out successfully', 
+      visitor,
+      duration: visitor.actualDuration,
+      overstayed: visitor.isOverstayed,
+      overstayMinutes: visitor.overstayMinutes
+    });
   } catch (error) {
     console.error('Error checking out visitor:', error);
     res.status(500).json({ message: 'Error checking out visitor', error: error.message });
@@ -207,6 +232,257 @@ export const getVisitors = async (req, res) => {
 };
 
 /**
+ * @desc Check for overstayed visitors and trigger alerts
+ * @route GET /api/visitors/alerts/overstayed
+ * @access Authenticated
+ */
+export const checkOverstayedVisitors = async (req, res) => {
+  try {
+    const currentTime = new Date();
+    
+    // Find all checked-in visitors
+    const activeVisitors = await Visitor.find({ 
+      status: 'Checked In',
+      checkInTime: { $exists: true }
+    });
+
+    const overstayedVisitors = [];
+    const warnings = [];
+
+    for (const visitor of activeVisitors) {
+      const durationMs = currentTime - visitor.checkInTime;
+      const currentDuration = Math.round(durationMs / (1000 * 60)); // Convert to minutes
+      
+      // Check if approaching expected duration (80% of expected time)
+      const warningThreshold = visitor.expectedDuration * 0.8;
+      const isApproachingLimit = currentDuration >= warningThreshold && currentDuration < visitor.expectedDuration;
+      
+      // Check if overstayed
+      const isOverstayed = currentDuration > visitor.expectedDuration;
+      
+      if (isOverstayed) {
+        const overstayMinutes = currentDuration - visitor.expectedDuration;
+        
+        // Update visitor record
+        visitor.isOverstayed = true;
+        visitor.overstayMinutes = overstayMinutes;
+        visitor.lastActivityTime = currentTime;
+        
+        // Add alert if not already triggered
+        const hasRecentAlert = visitor.alertHistory.some(alert => 
+          alert.alertType === 'Overstay Alert' && 
+          (currentTime - alert.triggeredAt) < 30 * 60 * 1000 // Within last 30 minutes
+        );
+        
+        if (!hasRecentAlert) {
+          visitor.alertHistory.push({
+            alertType: 'Overstay Alert',
+            message: `Visitor has overstayed by ${overstayMinutes} minutes`,
+            triggeredAt: currentTime
+          });
+          visitor.alertsTriggered = true;
+        }
+        
+        await visitor.save();
+        
+        overstayedVisitors.push({
+          ...visitor.toObject(),
+          currentDuration,
+          overstayMinutes
+        });
+      } else if (isApproachingLimit) {
+        // Add warning if not already triggered
+        const hasRecentWarning = visitor.alertHistory.some(alert => 
+          alert.alertType === 'Duration Warning' && 
+          (currentTime - alert.triggeredAt) < 15 * 60 * 1000 // Within last 15 minutes
+        );
+        
+        if (!hasRecentWarning) {
+          visitor.alertHistory.push({
+            alertType: 'Duration Warning',
+            message: `Visitor approaching expected duration (${currentDuration}/${visitor.expectedDuration} minutes)`,
+            triggeredAt: currentTime
+          });
+          await visitor.save();
+        }
+        
+        warnings.push({
+          ...visitor.toObject(),
+          currentDuration,
+          remainingMinutes: visitor.expectedDuration - currentDuration
+        });
+      }
+    }
+
+    res.json({
+      overstayedVisitors,
+      warnings,
+      totalActiveVisitors: activeVisitors.length,
+      overstayedCount: overstayedVisitors.length,
+      warningCount: warnings.length,
+      lastChecked: currentTime
+    });
+
+  } catch (error) {
+    console.error('Error checking overstayed visitors:', error);
+    res.status(500).json({ message: 'Error checking overstayed visitors', error: error.message });
+  }
+};
+
+/**
+ * @desc Get visitor duration analytics
+ * @route GET /api/visitors/analytics/duration
+ * @access Authenticated
+ */
+export const getVisitorDurationAnalytics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.checkInTime = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate + 'T23:59:59.999Z')
+      };
+    }
+
+    // Get duration statistics
+    const durationStats = await Visitor.aggregate([
+      { $match: { ...dateFilter, actualDuration: { $exists: true } } },
+      {
+        $group: {
+          _id: null,
+          avgDuration: { $avg: '$actualDuration' },
+          minDuration: { $min: '$actualDuration' },
+          maxDuration: { $max: '$actualDuration' },
+          totalVisitors: { $sum: 1 },
+          overstayedCount: { $sum: { $cond: ['$isOverstayed', 1, 0] } }
+        }
+      }
+    ]);
+
+    // Get duration distribution
+    const durationDistribution = await Visitor.aggregate([
+      { $match: { ...dateFilter, actualDuration: { $exists: true } } },
+      {
+        $bucket: {
+          groupBy: '$actualDuration',
+          boundaries: [0, 30, 60, 120, 240, 480, 1440], // 0-30min, 30-60min, 1-2hr, 2-4hr, 4-8hr, 8-24hr
+          default: '1440+',
+          output: {
+            count: { $sum: 1 },
+            avgDuration: { $avg: '$actualDuration' }
+          }
+        }
+      }
+    ]);
+
+    // Get overstay analysis by purpose
+    const overstayByPurpose = await Visitor.aggregate([
+      { $match: { ...dateFilter, isOverstayed: true } },
+      {
+        $group: {
+          _id: '$purpose',
+          count: { $sum: 1 },
+          avgOverstay: { $avg: '$overstayMinutes' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json({
+      statistics: durationStats[0] || {
+        avgDuration: 0,
+        minDuration: 0,
+        maxDuration: 0,
+        totalVisitors: 0,
+        overstayedCount: 0
+      },
+      durationDistribution,
+      overstayByPurpose,
+      overstayRate: durationStats[0] ? 
+        ((durationStats[0].overstayedCount / durationStats[0].totalVisitors) * 100).toFixed(1) : 0
+    });
+
+  } catch (error) {
+    console.error('Error fetching duration analytics:', error);
+    res.status(500).json({ message: 'Error fetching duration analytics', error: error.message });
+  }
+};
+
+/**
+ * @desc Update visitor expected duration
+ * @route PUT /api/visitors/:id/duration
+ * @access Authenticated
+ */
+export const updateVisitorDuration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { expectedDuration, notes } = req.body;
+
+    const visitor = await Visitor.findById(id);
+    if (!visitor) {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
+
+    if (visitor.status !== 'Checked In') {
+      return res.status(400).json({ message: 'Can only update duration for checked-in visitors' });
+    }
+
+    visitor.expectedDuration = expectedDuration;
+    if (notes) visitor.notes = notes;
+    
+    await visitor.save();
+
+    res.json({ 
+      message: 'Visitor duration updated successfully', 
+      visitor 
+    });
+
+  } catch (error) {
+    console.error('Error updating visitor duration:', error);
+    res.status(500).json({ message: 'Error updating visitor duration', error: error.message });
+  }
+};
+
+/**
+ * @desc Acknowledge visitor alert
+ * @route POST /api/visitors/:id/alerts/:alertId/acknowledge
+ * @access Authenticated
+ */
+export const acknowledgeVisitorAlert = async (req, res) => {
+  try {
+    const { id, alertId } = req.params;
+    const { acknowledgedBy } = req.body;
+
+    const visitor = await Visitor.findById(id);
+    if (!visitor) {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
+
+    const alert = visitor.alertHistory.id(alertId);
+    if (!alert) {
+      return res.status(404).json({ message: 'Alert not found' });
+    }
+
+    alert.acknowledged = true;
+    alert.acknowledgedBy = acknowledgedBy;
+    alert.acknowledgedAt = new Date();
+    
+    await visitor.save();
+
+    res.json({ 
+      message: 'Alert acknowledged successfully', 
+      alert 
+    });
+
+  } catch (error) {
+    console.error('Error acknowledging alert:', error);
+    res.status(500).json({ message: 'Error acknowledging alert', error: error.message });
+  }
+};
+
+/**
  * @desc Get a single visitor by ID
  * @route GET /api/visitors/:id
  * @access Authenticated
@@ -256,38 +532,38 @@ export const getVisitorReport = async (req, res) => {
   }
 };
 
-/**
- * @desc Check for overstayed visitors
- * @route GET /api/visitors/alerts
- * @access Admin
- */
-export const checkOverstayedVisitors = async (req, res) => {
-  try {
-    const durationLimitHours = 2; // Example limit: 2 hours
-    const now = new Date();
+// /**
+//  * @desc Check for overstayed visitors
+//  * @route GET /api/visitors/alerts
+//  * @access Admin
+//  */
+// export const checkOverstayedVisitors = async (req, res) => {
+//   try {
+//     const durationLimitHours = 2; // Example limit: 2 hours
+//     const now = new Date();
 
-    const overstayedVisitors = await Visitor.find({
-      status: 'Checked In',
-      checkInTime: { $exists: true }
-    });
+//     const overstayedVisitors = await Visitor.find({
+//       status: 'Checked In',
+//       checkInTime: { $exists: true }
+//     });
 
-    const alerts = overstayedVisitors.filter(visitor => {
-      const diffHours = (now - visitor.checkInTime) / (1000 * 60 * 60);
-      return diffHours > durationLimitHours;
-    });
+//     const alerts = overstayedVisitors.filter(visitor => {
+//       const diffHours = (now - visitor.checkInTime) / (1000 * 60 * 60);
+//       return diffHours > durationLimitHours;
+//     });
 
-    // Optionally mark as alerted
-    for (let visitor of alerts) {
-      visitor.alertsTriggered = true;
-      await visitor.save();
-    }
+//     // Optionally mark as alerted
+//     for (let visitor of alerts) {
+//       visitor.alertsTriggered = true;
+//       await visitor.save();
+//     }
 
-    res.json({
-      count: alerts.length,
-      alerts
-    });
-  } catch (error) {
-    console.error('Error checking overstayed visitors:', error);
-    res.status(500).json({ message: 'Error checking overstayed visitors', error: error.message });
-  }
-};
+//     res.json({
+//       count: alerts.length,
+//       alerts
+//     });
+//   } catch (error) {
+//     console.error('Error checking overstayed visitors:', error);
+//     res.status(500).json({ message: 'Error checking overstayed visitors', error: error.message });
+//   }
+// };
