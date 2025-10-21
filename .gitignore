@@ -6,8 +6,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-server/config/@credentials.json
-server/config/real_credentials.json
+#server/config/@credentials.json
+#server/config/real_credentials.json
 
 # Production builds
 /dist
