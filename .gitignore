@@ -1,9 +1,19 @@
 # Dependencies
 node_modules/
+*/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+server/config/@credentials.json
+server/config/real_credentials.json
+
+# Production builds
+/dist
+/build
+*/dist
+*/build
 
 # Environment variables
 .env
@@ -12,6 +22,22 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 .env*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Logs
 logs
@@ -58,25 +84,27 @@ jspm_packages/
 .cache
 .parcel-cache
 
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
 # Temporary folders
 tmp/
 temp/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE and Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Uploads and user-generated content
+uploads/
+*/uploads/
 
 # Database files
 *.sqlite
@@ -90,3 +118,8 @@ Thumbs.db
 # Test files
 test-results/
 coverage/
+
+# Package manager lock files (uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
