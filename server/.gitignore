@@ -2,8 +2,10 @@
 
 # dependencies
 /node_modules
-/config
+/config/@credentials.json
+/config/real_credentials.json
 /.pnp
+
 .pnp.js
 
 # testing
