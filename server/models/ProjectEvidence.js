@@ -56,34 +56,6 @@ const projectEvidenceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  googleDriveData: {
-    fileId: {
-      type: String
-    },
-    webViewLink: {
-      type: String
-    },
-    webContentLink: {
-      type: String
-    },
-    projectFolderId: {
-      type: String
-    },
-    projectFolderName: {
-      type: String
-    },
-    folderStructure: {
-      mainFolder: {
-        type: String
-      },
-      monthFolder: {
-        type: String
-      },
-      projectFolder: {
-        type: String
-      }
-    }
-  },
   thumbnailUrl: {
     type: String
   },

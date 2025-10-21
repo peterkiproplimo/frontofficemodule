@@ -5,7 +5,6 @@ import Student from '../models/Student.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import googleDriveService from '../utils/googleDriveService.js';
 import mongoose from 'mongoose';
 
 // Configure multer for file uploads
@@ -228,23 +227,8 @@ export const createProjectEvidence = async (req, res) => {
           student: student
         };
 
-        const uploadResult = await googleDriveService.uploadStudentProject(filePath, projectData);
-        
-        if (uploadResult.success) {
-          googleDriveData = {
-            fileId: uploadResult.fileId,
-            webViewLink: uploadResult.webViewLink,
-            webContentLink: uploadResult.webContentLink,
-            projectFolderId: uploadResult.projectFolderId,
-            projectFolderName: uploadResult.projectFolderName,
-            folderStructure: uploadResult.folderStructure
-          };
-          
-          console.log(`Project evidence uploaded to Google Drive successfully: ${uploadResult.fileName}`);
-        } else {
-          console.error('Failed to upload to Google Drive:', uploadResult.error);
-          // Continue with local storage even if Google Drive upload fails
-        }
+        // Google Drive functionality removed - using local storage only
+        console.log('Google Drive upload requested but functionality has been removed');
       } catch (driveError) {
         console.error('Google Drive upload error:', driveError);
         // Continue with local storage even if Google Drive upload fails
@@ -330,16 +314,7 @@ export const deleteProjectEvidence = async (req, res) => {
       }
     }
 
-    // Delete from Google Drive if it exists
-    if (projectEvidence.googleDriveData && projectEvidence.googleDriveData.fileId) {
-      try {
-        await googleDriveService.deleteFile(projectEvidence.googleDriveData.fileId);
-        console.log(`File deleted from Google Drive: ${projectEvidence.googleDriveData.fileId}`);
-      } catch (driveError) {
-        console.error('Error deleting file from Google Drive:', driveError);
-        // Continue with local deletion even if Google Drive deletion fails
-      }
-    }
+    // Google Drive deletion removed - using local storage only
 
     await ProjectEvidence.findByIdAndDelete(id);
 
@@ -394,111 +369,26 @@ export const addTeacherFeedback = async (req, res) => {
   }
 };
 
-// Upload existing project evidence to Google Drive
+// Upload to Google Drive functionality removed
 export const uploadToGoogleDrive = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const projectEvidence = await ProjectEvidence.findById(id)
-      .populate('subject', 'name code')
-      .populate('competency', 'name code')
-      .populate('student', 'name studentId');
-
-    if (!projectEvidence) {
-      return res.status(404).json({ message: 'Project evidence not found' });
-    }
-
-    // Check if already uploaded to Google Drive
-    if (projectEvidence.googleDriveData && projectEvidence.googleDriveData.fileId) {
-      return res.status(400).json({ 
-        message: 'Project evidence already uploaded to Google Drive',
-        googleDriveData: projectEvidence.googleDriveData
-      });
-    }
-
-    // Check if local file exists
-    if (!projectEvidence.mediaUrl) {
-      return res.status(400).json({ message: 'No media file found for this project evidence' });
-    }
-
-    const filePath = path.join(process.cwd(), projectEvidence.mediaUrl);
-    if (!fs.existsSync(filePath)) {
-      return res.status(400).json({ message: 'Local media file not found' });
-    }
-
-    // Upload to Google Drive
-    const uploadResult = await googleDriveService.uploadStudentProject(filePath, {
-      title: projectEvidence.title,
-      description: projectEvidence.description,
-      caption: projectEvidence.caption,
-      reflection: projectEvidence.reflection,
-      subject: projectEvidence.subject,
-      competency: projectEvidence.competency,
-      pci: projectEvidence.pci,
-      evidenceType: projectEvidence.evidenceType,
-      student: projectEvidence.student
+    res.status(501).json({ 
+      message: 'Google Drive functionality has been removed. Please use local file storage.'
     });
-
-    if (uploadResult.success) {
-      // Update the project evidence with Google Drive data
-      projectEvidence.googleDriveData = {
-        fileId: uploadResult.fileId,
-        webViewLink: uploadResult.webViewLink,
-        webContentLink: uploadResult.webContentLink,
-        projectFolderId: uploadResult.projectFolderId,
-        projectFolderName: uploadResult.projectFolderName,
-        folderStructure: uploadResult.folderStructure
-      };
-
-      await projectEvidence.save();
-
-      res.json({
-        message: 'Project evidence uploaded to Google Drive successfully',
-        googleDriveData: projectEvidence.googleDriveData
-      });
-    } else {
-      res.status(500).json({ 
-        message: 'Failed to upload to Google Drive',
-        error: uploadResult.error
-      });
-    }
-
   } catch (error) {
-    console.error('Error uploading to Google Drive:', error);
+    console.error('Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Get Google Drive file information
+// Get Google Drive file information functionality removed
 export const getGoogleDriveInfo = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const projectEvidence = await ProjectEvidence.findById(id);
-    if (!projectEvidence) {
-      return res.status(404).json({ message: 'Project evidence not found' });
-    }
-
-    if (!projectEvidence.googleDriveData || !projectEvidence.googleDriveData.fileId) {
-      return res.status(404).json({ message: 'No Google Drive data found for this project evidence' });
-    }
-
-    const fileInfo = await googleDriveService.getFileInfo(projectEvidence.googleDriveData.fileId);
-    
-    if (fileInfo.success) {
-      res.json({
-        googleDriveData: projectEvidence.googleDriveData,
-        fileInfo: fileInfo.fileInfo
-      });
-    } else {
-      res.status(500).json({ 
-        message: 'Failed to get Google Drive file information',
-        error: fileInfo.error
-      });
-    }
-  }
-  catch (error) {
-    console.error('Error getting Google Drive file information:', error);
+    res.status(501).json({ 
+      message: 'Google Drive functionality has been removed. Please use local file storage.'
+    });
+  } catch (error) {
+    console.error('Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
