@@ -56,36 +56,92 @@ const projectEvidenceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  cloudinaryData: {
+    public_id: {
+      type: String
+    },
+    secure_url: {
+      type: String
+    },
+    url: {
+      type: String
+    },
+    format: {
+      type: String
+    },
+    width: {
+      type: Number
+    },
+    height: {
+      type: Number
+    },
+    bytes: {
+      type: Number
+    },
+    folder: {
+      type: String
+    },
+    folderStructure: {
+      mainFolder: {
+        type: String
+      },
+      studentFolder: {
+        type: String
+      },
+      projectFolder: {
+        type: String
+      }
+    }
+  },
   thumbnailUrl: {
     type: String
   },
   student: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Student',
-    required: true
+    type: String,
+    required: true,
+    trim: true
+  },
+  studentName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  studentId: {
+    type: String,
+    required: true,
+    trim: true
   },
   teacherFeedback: {
-    comment: {
-      type: String,
-      trim: true
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    authenticityApproved: {
-      type: Boolean,
-      default: false
-    },
-    feedbackBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    feedbackDate: {
-      type: Date,
-      default: Date.now
-    }
+    type: [{
+      comment: {
+        type: String,
+        trim: true,
+        required: true
+      },
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+        required: true
+      },
+      authenticityApproved: {
+        type: Boolean,
+        default: false
+      },
+      feedbackBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      feedbackBy_name: {
+        type: String,
+        trim: true
+      },
+      feedbackDate: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    default: []
   },
   status: {
     type: String,

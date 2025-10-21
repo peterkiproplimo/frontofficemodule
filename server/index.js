@@ -27,6 +27,7 @@ import frontOfficeRoutes from "./routes/frontOfficeRoutes.js";
 import subjectRoutes from "./routes/subjectRoutes.js";
 import competencyRoutes from "./routes/competencyRoutes.js";
 import projectEvidenceRoutes from "./routes/projectEvidenceRoutes.js";
+import cloudinaryConfigRoutes from "./routes/cloudinaryConfigRoutes.js";
 
 
 // Configuration
@@ -57,6 +58,7 @@ app.use("/front-office", frontOfficeRoutes);
 app.use("/subjects", subjectRoutes);
 app.use("/competencies", competencyRoutes);
 app.use("/project-evidences", projectEvidenceRoutes);
+app.use("/cloudinary-config", cloudinaryConfigRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
